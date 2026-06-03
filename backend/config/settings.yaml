@@ -1,0 +1,198 @@
+database:
+  host: "${DB_HOST:localhost}"
+  port: "${DB_PORT:5432}"
+  name: "${DB_NAME:ems_db}"
+  user: "${DB_USER:ems_user}"
+  password: "${DB_PASSWORD:ems_password}"
+  pool_size: 10
+  max_overflow: 20
+  echo: false
+
+object:
+  name: "Поліклініка Київ"
+  type: "polyclinic"
+  location: "Київ, Україна"
+  area_m2: 850
+  max_power_kw: 95
+  meter_count: 6
+  operation_mode: "8-20"
+  avg_load_kw: 22.0
+  min_load_kw: 5.0
+  max_load_kw: 38.0
+
+solar:
+  name: "СЕС Медичний центр"
+  capacity_kw: 35.0
+  panel_efficiency: 0.195
+  inverter_efficiency: 0.97
+  degradation_rate: 0.005
+  tilt_angle_deg: 35
+  azimuth_deg: 180
+
+battery:
+  name: "BESS Медичний центр"
+  capacity_kwh: 25.0
+  max_charge_kw: 12.0
+  max_discharge_kw: 12.0
+  charge_efficiency: 0.95
+  discharge_efficiency: 0.95
+  min_soc_pct: 10.0
+  max_soc_pct: 95.0
+  initial_soc_pct: 50.0
+
+tariff:
+  name: "2-зонний тариф НЕК Укренерго"
+  type: "two_zone"
+  currency: "UAH"
+  zones:
+    - name: "Денна зона"
+      zone_type: "day"
+      start_time: "07:00:00"
+      end_time: "23:00:00"
+      rate_uah_kwh: 6.9
+    - name: "Нічна зона"
+      zone_type: "night"
+      start_time: "23:00:00"
+      end_time: "07:00:00"
+      rate_uah_kwh: 5.6
+
+weather:
+  location: "Київ, Україна"
+  latitude: 50.45
+  longitude: 30.52
+  timezone: "Europe/Kyiv"
+  hdd_base_temp_c: 18.0
+  cdd_base_temp_c: 22.0
+  year: 2025
+  # Середні місячні температури Києва (°C)
+  monthly_avg_temp_c:
+    - -3.2   # Січень
+    - -2.1   # Лютий
+    - 3.8    # Березень
+    - 12.6   # Квітень
+    - 18.9   # Травень
+    - 22.4   # Червень
+    - 24.3   # Липень
+    - 23.8   # Серпень
+    - 17.1   # Вересень
+    - 9.8    # Жовтень
+    - 2.7    # Листопад
+    - -1.4   # Грудень
+  # Середня місячна інсоляція Вт/м² (пікові)
+  monthly_avg_irradiance_wm2:
+    - 45     # Січень
+    - 85     # Лютий
+    - 155    # Березень
+    - 230    # Квітень
+    - 295    # Травень
+    - 320    # Червень
+    - 335    # Липень
+    - 295    # Серпень
+    - 210    # Вересень
+    - 120    # Жовтень
+    - 55     # Листопад
+    - 35     # Грудень
+
+meters:
+  - id: 1
+    name: "ГРЩ-1 Введення"
+    type: "main"
+    level: 1
+    description: "Головний розподільний щит - облік всього будинку"
+    location: "Електрощитова, -1 поверх"
+  - id: 2
+    name: "ЩО-2 ОВАС"
+    type: "zone"
+    level: 2
+    description: "Системи опалення, вентиляції та кондиціювання"
+    location: "Технічний поверх"
+  - id: 3
+    name: "ЩО-3 Освітлення"
+    type: "zone"
+    level: 2
+    description: "Загальне освітлення будівлі"
+    location: "Щитова 1-й поверх"
+  - id: 4
+    name: "ЩО-4 Медичне обл."
+    type: "zone"
+    level: 2
+    description: "Медичне обладнання та апаратура"
+    location: "Щитова 2-й поверх"
+  - id: 5
+    name: "ЩО-5 СЕС"
+    type: "solar"
+    level: 3
+    description: "Облік генерації сонячних панелей"
+    location: "Дах будівлі"
+  - id: 6
+    name: "ЩО-6 BESS"
+    type: "battery"
+    level: 3
+    description: "Облік заряду/розряду акумуляторної системи"
+    location: "Електрощитова, -1 поверх"
+
+generation:
+  year: 2025
+  hours: 8760
+  random_seed: 42
+  fluctuation_min_pct: 0.05
+  fluctuation_max_pct: 0.10
+  # Коефіцієнти навантаження за типом дня
+  day_type_factors:
+    weekday: 1.0
+    weekend: 0.72
+    holiday: 0.65
+  # Погодинні коефіцієнти для медичного центру 24/7
+  hourly_load_profile:
+    - 0.10  # 00  закрито — охорона + чергові системи
+    - 0.09  # 01
+    - 0.08  # 02
+    - 0.08  # 03
+    - 0.08  # 04
+    - 0.09  # 05
+    - 0.12  # 06
+    - 0.20  # 07  підготовка до відкриття
+    - 0.60  # 08  відкриття, наліт пацієнтів
+    - 0.85  # 09
+    - 1.00  # 10  денний пік
+    - 1.00  # 11
+    - 0.92  # 12  обідня пауза
+    - 0.90  # 13
+    - 1.00  # 14
+    - 0.98  # 15
+    - 0.95  # 16
+    - 0.85  # 17
+    - 0.65  # 18  завершення прийому
+    - 0.35  # 19
+    - 0.15  # 20  закриття
+    - 0.11  # 21
+    - 0.10  # 22
+    - 0.10  # 23
+  # Сезонні коефіцієнти навантаження
+  seasonal_factors:
+    winter: 1.18   # Грудень–Лютий (опалення)
+    spring: 0.95   # Березень–Травень
+    summer: 1.08   # Червень–Серпень (кондиціювання)
+    autumn: 0.92   # Вересень–Листопад
+  # Температурна залежність навантаження
+  temperature:
+    heating_threshold_c: 15.0
+    cooling_threshold_c: 22.0
+    heating_coeff_kw_per_c: 0.35
+    cooling_coeff_kw_per_c: 0.28
+  # Розподіл між лічильниками (частка від загального)
+  meter_shares:
+    "2": 0.30   # ОВАС
+    "3": 0.18   # Освітлення
+    "4": 0.32   # Медичне обладнання
+
+analytics:
+  anomaly_threshold_pct: 0.20
+  baseline_window_days: 30
+  efficiency_target_kwh_m2_year: 180.0
+  report_timezone: "Europe/Kyiv"
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "logs/ems.log"
