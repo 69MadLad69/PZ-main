@@ -207,10 +207,25 @@ forecasting:
 
 simulation:
   horizon_hours: 24
-  strategy: "rule_based"
+  strategy: "tariff_optimized"
+  initial_soc_pct: 50.0
+  soc_min_pct: 20.0
+  soc_max_pct: 90.0
+  self_discharge_rate_per_hour: 0.001
+  max_charge_kw: 12.0
+  max_discharge_kw: 12.0
+  simulation_days: 7
 
 api:
   host: "0.0.0.0"
   port: 8000
   prefix: "/api/v1"
   reload: true
+
+economics:
+  solar_capex_uah_per_kw: 38000.0
+  battery_capex_uah_per_kwh: 14000.0
+  annual_opex_pct: 0.02
+  discount_rate: 0.12
+  project_life_years: 20
+  grid_price_escalation: 0.05

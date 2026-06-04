@@ -179,7 +179,24 @@ class ForecastingConfig(BaseModel):
 
 class SimulationConfig(BaseModel):
     horizon_hours: int = 24
-    strategy: str = "rule_based"
+    strategy: str = "tariff_optimized"
+    initial_soc_pct: float = 50.0
+    soc_min_pct: float = 20.0
+    soc_max_pct: float = 90.0
+    self_discharge_rate_per_hour: float = 0.001
+    max_charge_kw: float = 12.0
+    max_discharge_kw: float = 12.0
+    simulation_days: int   = 7
+
+
+class EconomicsConfig(BaseModel):
+    solar_capex_uah_per_kw: float = 38000.0
+    battery_capex_uah_per_kwh: float = 14000.0
+    annual_opex_pct: float = 0.02
+    discount_rate: float = 0.12
+    project_life_years: int = 20
+    grid_price_escalation: float = 0.05
+
 
 class APIConfig(BaseModel):
     host: str = "0.0.0.0"
@@ -199,7 +216,8 @@ class Settings(BaseModel):
     analytics: AnalyticsConfig
     logging: LoggingConfig
     forecasting: ForecastingConfig
-    simulation: SimulationConfig 
+    simulation: SimulationConfig
+    economics: EconomicsConfig
     api: APIConfig
 
 
