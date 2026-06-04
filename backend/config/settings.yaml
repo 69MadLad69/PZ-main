@@ -194,5 +194,23 @@ analytics:
 
 logging:
   level: "INFO"
-  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  format: "%(levelname)s – %(message)s"
   file: "logs/ems.log"
+
+forecasting:
+  train_months: 10
+  models_dir: "models_saved"
+  main_meter_id: 1
+  target_column: "energy_kwh"
+  feature_lags: [1, 2, 24, 48, 168]
+  rolling_windows: [24, 168]
+
+simulation:
+  horizon_hours: 24
+  strategy: "rule_based"
+
+api:
+  host: "0.0.0.0"
+  port: 8000
+  prefix: "/api/v1"
+  reload: true

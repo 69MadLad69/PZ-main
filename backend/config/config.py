@@ -166,8 +166,26 @@ class AnalyticsConfig(BaseModel):
 
 class LoggingConfig(BaseModel):
     level: str = "INFO"
-    format: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    format: str = "%(levelname)s – %(message)s"
     file: str = "logs/ems.log"
+
+class ForecastingConfig(BaseModel):
+    train_months: int = 10
+    models_dir: str = "models_saved"
+    main_meter_id: int = 1
+    target_column: str = "energy_kwh"
+    feature_lags: list[int] = [1, 2, 24, 48, 168]
+    rolling_windows: list[int] = [24, 168]
+
+class SimulationConfig(BaseModel):
+    horizon_hours: int = 24
+    strategy: str = "rule_based"
+
+class APIConfig(BaseModel):
+    host: str = "0.0.0.0"
+    port: int = 8000
+    prefix: str = "/api/v1"
+    reload: bool = True
 
 class Settings(BaseModel):
     database: DatabaseConfig
@@ -180,6 +198,9 @@ class Settings(BaseModel):
     generation: GenerationConfig
     analytics: AnalyticsConfig
     logging: LoggingConfig
+    forecasting: ForecastingConfig
+    simulation: SimulationConfig 
+    api: APIConfig
 
 
 @lru_cache(maxsize=1)

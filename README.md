@@ -1,6 +1,6 @@
 # EMS – Energy Management System
 
-## Лабораторна Робота №1: Проектування системи збереження та збору даних
+## Лабораторна Робота №2: Аналіз даних та прогнозування енергоспоживання
 
 **Об'єкт:** Поліклініка, Київ | **Площа:** 850 м² | **Режим:** 8:00–20:00
 
@@ -71,7 +71,7 @@ docker-compose ps
 # Очікуємо: ems_postgres  healthy
 ```
 
-### 3. Ініціалізувати БД та згенерувати дані
+### 3. Ініціалізувати БД та згенерувати дані (ЛР1)
 
 ```bash
 # Ініціалізація (DDL + reference data + views + 8760h synthetic data)
@@ -81,14 +81,27 @@ python -m backend.scripts.init_db
 python -m backend.scripts.init_db --reset
 ```
 
-### 4. Запустити аналітику
+### 4. Запустити аналітику (ЛР1)
 
 ```bash
 python -m backend.scripts.run_analytics --year 2025
 # Звіти збережено в reports/
 ```
 
-### 5. Відкрити pgAdmin
+
+### 5. Навчити моделі прогнозування (ЛР2)
+
+```bash
+python -m backend.scripts.train_models
+```
+
+### 6. Запустити Jupyter Notebook (ЛР2)
+
+```bash
+jupyter notebook notebooks/lab2_forecasting.ipynb
+```
+
+### 7. Відкрити pgAdmin
 
 Перейти на: http://localhost:5050  
 Логін: `admin@example.com` | Пароль: `admin`
@@ -106,33 +119,65 @@ python -m backend.scripts.run_analytics --year 2025
 ## Структура проекту
 
 ```
-ems-lab1/
-├── docker-compose.yml              # PostgreSQL + pgAdmin
-├── requirements.txt
-├── .env.example
-├── reports/                        # Генеровані CSV-звіти (gitignore)
-├── backend/
-│   ├── config/
-│   │   ├── settings.yaml           # ← ВСІ параметри системи
-│   │   └── config.py               # Pydantic Settings loader
-│   ├── app/
-│   │   ├── database.py             # Engine, SessionLocal, session_scope
-│   │   ├── models/
-│   │   │   └── models.py           # 9 ORM моделей + enum-типи
-│   │   ├── repositories/
-│   │   │   ├── base.py             # Generic CRUD BaseRepository
-│   │   │   └── repositories.py     # Domain repositories
-│   │   ├── services/
-│   │   │   └── energy_service.py   # EnergyService, TariffService
-│   │   └── analytics/
-│   │       └── queries.py          # Views DDL + AnalyticsQueries
-│   └── scripts/
-│       ├── init_db.py              # Ініціалізація БД
-│       ├── generate_data.py        # Генератор даних
-│       └── run_analytics.py        # Виконати всі запити → CSV
+PZ-main/
+├── docker-compose.yml # PostgreSQL 16 + pgAdmin
+├── requirements.txt # Залежності ЛР1 + ЛР2
+├── .env.example # Шаблон змінних середовища
+│
+├── reports/ # Генеровані звіти (CSV + PNG)
+│   ├── 01_daily_consumption.csv
+│   ├── 02_monthly_consumption.csv
+│   ├── fig_01_daily.png # ЛР1 charts
+│   ├── fig_lr2_01_yearly.png # ЛР2 EDA charts
+│   └── ...
+│
+├── models_saved/ # Навчені ML-моделі (ЛР2)
+│   ├── gradient_boosting.joblib
+│   ├── random_forest.joblib
+│   └── metadata.json
+│
+├── notebooks/
+│   └── lab2_forecasting.ipynb # ЛР2: повний Data Science pipeline
+│
+└── backend/
+    ├── config/
+    │   ├── settings.yaml # ← ВСІ параметри системи
+    │   └── config.py # Pydantic Settings loader
+    │
+    ├── app/
+    │   ├── database.py # Engine, session_scope, get_db
+    │   │
+    │   ├── models/
+    │   │   └── models.py # 9 ORM-моделей + enum-типи
+    │   │
+    │   ├── repositories/
+    │   │   ├── base.py # Generic CRUD BaseRepository
+    │   │   └── repositories.py # Domain repositories
+    │   │
+    │   ├── services/
+    │   │   └── energy_service.py # EnergyService, TariffService
+    │   │
+    │   ├── analytics/
+    │   │   ├── queries.py # SQL views DDL + AnalyticsQueries
+    │   │   └── charts.py # Matplotlib chart generation
+    │   │
+    │   └── forecasting/ # ЛР2
+    │       ├── __init__.py
+    │       ├── feature_engineering.py  # Завантаження БД + 36 ознак
+    │       ├── models.py # 6 ML-моделей + метрики
+    │       ├── forecast_service.py # ForecastService (API для ЛР3/4)
+    │       └── model_loader.py # joblib збереження/завантаження
+    │
+    └── scripts/
+        ├── init_db.py # ЛР1: Ініціалізація БД
+        ├── generate_data.py # ЛР1: Генератор 8760 годин
+        ├── run_analytics.py # ЛР1: Аналітика → CSV + PNG
+        └── train_models.py # ЛР2: Навчання ML-моделей
 ```
 
 ---
+
+## ЛР1
 
 ## Генерація даних
 
@@ -203,6 +248,99 @@ ems-lab1/
   ЩО-5 СЕС → solar_generation.power_kw
   ЩО-6 BESS → battery_state.power_kw
 ```
+
+### Тарифні зони
+
+|  Зона |         Час (TIME)      |       Тариф      |
+|-------|-------------------------|------------------|
+| Денна | `07:00:00` – `23:00:00` | 6.90 грн/кВт·год |
+| Нічна | `23:00:00` – `07:00:00` | 5.60 грн/кВт·год |
+
+### Результати аналітики (2025 рік)
+
+|     Показник      |                   Значення                   |
+|-------------------|----------------------------------------------|
+| Річне споживання  | 114 362 кВт·год                              |
+| Питоме споживання | 134.5 кВт·год/м²                             |
+| Річна вартість    | 764 711 грн                                  |
+| Денна зона        | 95 601 кВт·год (83.6%) / 659 646 грн (86.3%) |
+| Нічна зона        | 18 762 кВт·год (16.4%) / 105 065 грн (13.7%) |
+| Аномальних годин  | 60 (0.69%)                                   |
+
+### Генеровані звіти ЛР1
+
+|             Файл           |    Тип     |                   Опис                     |
+|----------------------------|------------|--------------------------------------------|
+| `fig_01_daily.png`         | Лінійний   | Добове споживання + ковзне середнє 7 днів  |
+| `fig_02_monthly.png`       | Стовпчаста | Місячне споживання день/ніч + вартість     |
+| `fig_03_tariff.png`        | Кільцева   | Розподіл кВт·год і грн між зонами          |
+| `fig_04_specific.png`      | Стовпчаста | кВт·год/м² з лініями нормативів            |
+| `fig_05_hourly_profile.png`| Лінійний   | Добовий профіль будні vs вихідні           |
+| `fig_06_load_factor.png`   | Лінійний   | Коефіцієнт навантаження та пік/середнє     |
+| `fig_07_anomalies.png`     | Scatter    | Аномальні години (відхилення від baseline) |
+| `fig_08_solar_balance.png` | Стовпчаста | Місячний баланс СЕС / BESS / мережа        |
+
+## ЛР2
+
+### Модулі
+
+|           Файл           |                               Призначення                                |
+|--------------------------|--------------------------------------------------------------------------|
+| `feature_engineering.py` | Завантаження з БД + 36 ознак (часові, циклічні, погодні, лагові, ковзні) |
+| `models.py`              | 6 ML-моделей, метрики R²/RMSE/MAE/MAPE                                   |
+| `forecast_service.py`    | `ForecastService` — публічний API для ЛР3 і ЛР4                          |
+| `model_loader.py`        | Збереження/завантаження через joblib                                     |
+
+### Моделі прогнозування
+
+|             Модель            |         Тип        |      Ознаки      |
+|-------------------------------|--------------------|------------------|
+| Baseline (Hourly Mean)        | Статистичний       | hour, is_weekend |
+| Linear Regression             | Параметричний      | 13 базових       |
+| Ridge Regression              | Параметричний + L2 | 13 базових       |
+| Polynomial Regression (deg-2) | Нелінійний         | 8 ключових       |
+| Random Forest                 | Ансамблевий        | всі 36           |
+| Gradient Boosting             | Ансамблевий        | всі 36           |
+
+### Ознаки (feature engineering)
+
+```
+Часові (7):    hour, day_of_week, day_of_month, month, quarter, week_of_year, day_of_year
+Циклічні (8):  hour_sin/cos, month_sin/cos, dow_sin/cos, doy_sin/cos
+Бінарні (5):   is_weekend, is_holiday, is_working_hour, is_working_time, season
+Погодні (6):   temperature_c, hdd, cdd, temp_dev, solar_irradiance_wm2, humidity_pct
+Тарифні (2):   is_day_tariff, tariff_price
+Лагові (5):    lag_1, lag_2, lag_24, lag_48, lag_168
+Ковзні (7):    rolling_mean/std_24/168, rolling_max/min_24, lag_168_delta
+```
+
+### Розбиття даних
+
+|   Набір  |      Місяці      | Частка |
+|----------|------------------|--------|
+| Training | Січень–Жовтень   | 80%    |
+| Testing  | Листопад–Грудень | 20%    |
+
+### Графіки ЛР2 (Notebook)
+
+| Рисунок |         Тип         |                      Опис                    |
+|---------|---------------------|----------------------------------------------|
+|  Рис.1  | Лінійний            | Погодинне споживання за рік + ковзне середнє |
+|  Рис.2  | Area chart          | Типовий добовий профіль                      |
+|  Рис.3  | Area chart          | Профіль будніх днів                          |
+|  Рис.4  | Area chart          | Профіль вихідних днів                        |
+|  Рис.5  | Стовпчаста          | Місячна динаміка із сезонним забарвленням    |
+|  Рис.6  | Heatmap             | Година × день тижня                          |
+|  Рис.7  | Декомпозиція        | Тренд + сезонність + залишки                 |
+|  Рис.8  | Кореляційна матриця | Взаємозв'язки між ознаками                   |
+|  Рис.9  | Scatter             | Споживання vs температура / HDD / CDD        |
+|  Рис.10 | ACF/PACF            | Аналіз лагів (добова та тижнева циклічність) |
+|    —    | Boxplots            | Розподіл по годині / дню / місяцю            |
+|    —    | Порівняння моделей  | Bar chart R²/RMSE/MAE/MAPE                   |
+|    —    | Фактичне vs прогноз | Часовий ряд + scatter                        |
+|    —    | Залишки + Q-Q       | Residual plot + нормальний розподіл          |
+|    —    | Feature importance  | Топ-20 ознак Gradient Boosting               |
+|    —    | Прогноз місяця      | Погодинно + добово + економія СЕС            |
 
 ---
 

@@ -30,3 +30,12 @@ pytest-cov==6.0.0
 
 # Async support (LabWork 4 FastAPI preparation)
 asyncpg==0.30.0
+
+scikit-learn>=1.5.0
+statsmodels>=0.14.0
+plotly>=5.22.0
+nbformat>=5.10.0
+jupyter>=1.0.0
+ipykernel>=6.29.0
+joblib>=1.4.0
+scipy>=1.13.0
