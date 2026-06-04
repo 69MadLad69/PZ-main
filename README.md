@@ -1,6 +1,6 @@
 # EMS – Energy Management System
 
-## Лабораторна Робота №2: Аналіз даних та прогнозування енергоспоживання
+## Лабораторна Робота №3: Моделювання системи управління енергопотоками (EMS)
 
 **Об'єкт:** Поліклініка, Київ | **Площа:** 850 м² | **Режим:** 8:00–20:00
 
@@ -13,6 +13,35 @@
 3. [Структура проєкту](#структура-проєкту)
 4. [Генерація даних](#генерація-даних)
 5. [Аналітика та запити](#аналітика)
+
+## Архітектура
+
+```
+PZ-main/
+│
+│   ЛР1 — Фундамент (не змінюється)
+├── backend/app/database.py
+├── backend/app/models/models.py
+├── backend/app/repositories/
+├── backend/app/services/ 
+├── backend/app/analytics/
+├── backend/scripts/init_db.py
+├── backend/scripts/generate_data.py
+├── backend/scripts/run_analytics.py
+│
+│   ЛР2 — Прогнозування
+├── backend/app/forecasting/
+├── backend/scripts/train_models.py
+├── notebooks/lab2_forecasting.ipynb
+├── models_saved/
+│
+│   ЛР3 — EMS Simulation
+├── backend/app/simulation/
+├── backend/app/models/simulation_models.py
+├── backend/scripts/init_simulation_db.py
+├── backend/scripts/run_simulation.py
+└── notebooks/lab3_ems_simulation.ipynb
+```
 
 ## База даних
 
@@ -98,10 +127,23 @@ python -m backend.scripts.train_models
 ### 6. Запустити Jupyter Notebook (ЛР2)
 
 ```bash
-jupyter notebook notebooks/lab2_forecasting.ipynb
+jupyter notebook notebooks/lab2_forecasting.ipynb     # ЛР2
+jupyter notebook notebooks/lab3_ems_simulation.ipynb  # ЛР3
 ```
 
-### 7. Відкрити pgAdmin
+### 7. Ініціалізувати таблиці симуляції (ЛР3)
+
+```bash
+python -m backend.scripts.init_simulation_db
+```
+
+### 8. Запустити EMS симуляцію (ЛР3)
+
+```bash
+python -m backend.scripts.run_simulation --start 2025-07-01 --days 7
+```
+
+### 9. Відкрити pgAdmin
 
 Перейти на: http://localhost:5050  
 Логін: `admin@example.com` | Пароль: `admin`
@@ -161,18 +203,30 @@ PZ-main/
     │   │   ├── queries.py # SQL views DDL + AnalyticsQueries
     │   │   └── charts.py # Matplotlib chart generation
     │   │
-    │   └── forecasting/ # ЛР2
-    │       ├── __init__.py
-    │       ├── feature_engineering.py  # Завантаження БД + 36 ознак
-    │       ├── models.py # 6 ML-моделей + метрики
-    │       ├── forecast_service.py # ForecastService (API для ЛР3/4)
-    │       └── model_loader.py # joblib збереження/завантаження
+    │   ├── forecasting/ # ЛР2
+    │   │   ├── feature_engineering.py
+    │   │   ├── models.py
+    │   │   ├── forecast_service.py
+    │   │   └── model_loader.py
+    │   │
+    │   └── simulation/ # ЛР3
+    │       ├── components/
+    │       │   ├── solar.py # SolarPlant
+    │       │   ├── battery.py # BatteryStorage
+    │       │   ├── grid.py # GridConnection
+    │       │   └── load_profile.py # LoadProfile
+    │       ├── ems_controller.py # EMSController + TariffOptimizer
+    │       ├── simulation_engine.py
+    │       ├── economics.py # NPV, IRR, Payback, LCOE
+    │       └── simulation_service.py  # API-ready для ЛР4
     │
     └── scripts/
         ├── init_db.py # ЛР1: Ініціалізація БД
         ├── generate_data.py # ЛР1: Генератор 8760 годин
         ├── run_analytics.py # ЛР1: Аналітика → CSV + PNG
-        └── train_models.py # ЛР2: Навчання ML-моделей
+        ├── train_models.py # ЛР2: Навчання ML-моделей
+        ├── init_simulation_db.py # ЛР3: Ініціалізація БД для симуляції
+        └── run_simulation.py # ЛР3: Запуск симуляції
 ```
 
 ---
@@ -343,6 +397,86 @@ PZ-main/
 |    —    | Прогноз місяця      | Погодинно + добово + економія СЕС            |
 
 ---
+
+## ЛР3
+
+### EMS Engine — компоненти
+
+|         Клас        |             Файл             |              Призначення              |
+|---------------------|------------------------------|---------------------------------------|
+| `SolarPlant`        | `components/solar.py`        | Фізична модель СЕС (NOCT, деградація) |
+| `BatteryStorage`    | `components/battery.py`      | BESS (ефективність, SOC, саморозряд)  |
+| `GridConnection`    | `components/grid.py`         | Двозонний тариф, обмеження 95 кВт     |
+| `LoadProfile`       | `components/load_profile.py` | ЛР1 дані + ЛР2 прогноз                |
+| `EMSController`     | `ems_controller.py`          | Головна логіка кроку                  |
+| `TariffOptimizer`   | `ems_controller.py`          | Нічна зарядка / денна розрядка        |
+| `SimulationEngine`  | `simulation_engine.py`       | 7-добова симуляція, PostgreSQL        |
+| `EconomicAnalyzer`  | `economics.py`               | NPV, IRR, Payback, LCOE               |
+| `SimulationService` | `simulation_service.py`      | API-ready для ЛР4                     |
+
+### Параметри BESS
+
+|     Параметр      |  Значення  |
+|-------------------|------------|
+| Ємність           | 25 кВт·год |
+| SOC min (операц.) | 20%        |
+| SOC max (операц.) | 90%        |
+| Початковий SOC    | 50%        |
+| ККД заряду        | 95%        |
+| ККД розряду       | 95%        |
+| Саморозряд        | 0.1%/год   |
+| Макс. потужність  | 12 кВт     |
+
+### Алгоритм управління (кожна година)
+
+```
+1. Саморозряд батареї (0.1%/год)
+2. Генерація СЕС = f(інсоляція, температура, деградація)
+3. balance = solar − load
+4. IF balance ≥ 0 (надлишок):
+     → заряд батареї до SOC_max
+     → залишок → експорт у мережу
+5. IF balance < 0 (дефіцит):
+     IF нічний тариф AND SOC < 85%:
+       → нічна зарядка від мережі (12 кВт)
+     IF денний тариф AND SOC > 20%:
+       → розряд батареї для покриття
+     Решта дефіциту → імпорт
+```
+
+### Результати симуляції (01–07.07.2025)
+
+|       Показник       |        Значення       |
+|----------------------|-----------------------|
+| Загальне споживання  | 2 072.4 кВт·год       |
+| Генерація СЕС        | 426.9 кВт·год         |
+| Покриття навант. СЕС | 20.6%                 |
+| Самоспоживання СЕС   | 100.0%                |
+| Самодостатність      | 26.2%                 |
+| Цикли батареї        | 4.98                  |
+| Вартість з EMS       | 10 944 грн            |
+| Вартість без EMS     | 13 936 грн            |
+| **Економія**         | **2 992 грн (21.5%)** |
+| Річна екстраполяція  | 155 996 грн/рік       |
+
+### Інвестиційний аналіз
+
+|         Показник        |     Значення      |
+|-------------------------|-------------------|
+| CAPEX (СЕС 35 кВт)      | 1 330 000 грн     |
+| CAPEX (BESS 25 кВт·год) | 350 000 грн       |
+| CAPEX загальний         | 1 680 000 грн     |
+| Simple Payback Period   | 10.8 років        |
+| NPV (r=12%, 20 р.)      | −315 434 грн      |
+| IRR                     | 9.5%              |
+| LCOE                    | 11.61 грн/кВт·год |
+
+### Нові таблиці БД (ЛР3)
+
+|        Таблиця       |            Призначення           |
+|----------------------|----------------------------------|
+| `simulation_runs`    | Метаінформація про кожний прогін |
+| `simulation_results` | 168 погодинних записів на прогін |
 
 ## Аналітика
 
