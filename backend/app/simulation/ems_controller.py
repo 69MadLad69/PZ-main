@@ -27,7 +27,7 @@ class StepResult:
     discharge_kwh: float = 0.0
     import_kwh: float = 0.0
     export_kwh: float = 0.0
-    tariff_zone: str   = "day"
+    tariff_zone: str = "day"
     rate_uah_kwh: float = 6.9
     cost_uah: float = 0.0
     direct_solar_kwh: float = 0.0

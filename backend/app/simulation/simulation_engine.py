@@ -212,18 +212,19 @@ class SimulationEngine:
                 {
                     "run_id": self.run_id,
                     "timestamp": idx,
-                    "solar_kwh": row["solar_kwh"],
-                    "load_kwh": row["load_kwh"],
-                    "forecast_kwh": row["forecast_kwh"],
-                    "soc_pct": row["soc_pct"],
-                    "soc_kwh": row["soc_kwh"],
-                    "charge_kwh": row["charge_kwh"],
-                    "discharge_kwh": row["discharge_kwh"],
-                    "import_kwh": row["import_kwh"],
-                    "export_kwh": row["export_kwh"],
-                    "tariff_zone": row["tariff_zone"],
-                    "rate_uah_kwh": row["rate_uah_kwh"],
-                    "cost_uah": row["cost_uah"],
+                    "solar_kwh": float(row["solar_kwh"]),
+                    "load_kwh": float(row["load_kwh"]),
+                    "forecast_kwh":   float(row["forecast_kwh"]),
+                    "soc_pct": float(row["soc_pct"]),
+                    "soc_kwh": float(row["soc_kwh"]),
+                    "charge_kwh": float(row["charge_kwh"]),
+                    "discharge_kwh":  float(row["discharge_kwh"]),
+                    "import_kwh": float(row["import_kwh"]),
+                    "export_kwh": float(row["export_kwh"]),
+                    "direct_solar_kwh": float(row["direct_solar_kwh"]),
+                    "tariff_zone": str(row["tariff_zone"]),
+                    "rate_uah_kwh": float(row["rate_uah_kwh"]),
+                    "cost_uah": float(row["cost_uah"]),
                     "strategy": self.strategy,
                 }
                 for idx, row in df.iterrows()
@@ -232,12 +233,12 @@ class SimulationEngine:
                 INSERT INTO simulation_results
                     (run_id, timestamp, solar_kwh, load_kwh, forecast_kwh,
                      soc_pct, soc_kwh, charge_kwh, discharge_kwh,
-                     import_kwh, export_kwh, tariff_zone, rate_uah_kwh,
+                     import_kwh, export_kwh, direct_solar_kwh, tariff_zone, rate_uah_kwh,
                      cost_uah, strategy)
                 VALUES
                     (:run_id, :timestamp, :solar_kwh, :load_kwh, :forecast_kwh,
                      :soc_pct, :soc_kwh, :charge_kwh, :discharge_kwh,
-                     :import_kwh, :export_kwh, :tariff_zone, :rate_uah_kwh,
+                     :import_kwh, :export_kwh, :direct_solar_kwh, :tariff_zone, :rate_uah_kwh,
                      :cost_uah, :strategy)
             """), rows)
 
@@ -248,21 +249,21 @@ class SimulationEngine:
                 UPDATE simulation_runs SET
                     total_consumption_kwh = :tc,
                     total_generation_kwh  = :tg,
-                    total_import_kwh      = :ti,
-                    total_export_kwh      = :te,
-                    total_cost_uah        = :tc2,
-                    baseline_cost_uah     = :bc,
-                    savings_uah           = :sv,
-                    status                = 'completed'
+                    total_import_kwh = :ti,
+                    total_export_kwh = :te,           
+                    total_cost_uah = :tc2,
+                    baseline_cost_uah = :bc,
+                    savings_uah = :sv,
+                    status = 'completed'
                 WHERE run_id = :rid
             """), {
-                "tc": df["load_kwh"].sum(),
-                "tg": df["solar_kwh"].sum(),
-                "ti": df["import_kwh"].sum(),
-                "te": df["export_kwh"].sum(),
-                "tc2": total,
-                "bc": baseline_cost,
-                "sv": baseline_cost - total,
+                "tc": float(df["load_kwh"].sum()),
+                "tg": float(df["solar_kwh"].sum()),
+                "ti": float(df["import_kwh"].sum()),
+                "te": float(df["export_kwh"].sum()),
+                "tc2": float(df["cost_uah"].sum()),
+                "bc": float(baseline_cost),
+                "sv": float(baseline_cost - df["cost_uah"].sum()),
                 "rid": self.run_id,
             })
             self.db.commit()

@@ -54,24 +54,25 @@ class SimulationResult(Base):
     timestamp = Column(DateTime(timezone=True), nullable=False)
     solar_kwh = Column(Float, default=0.0)
     load_kwh = Column(Float, nullable=False)
-    forecast_kwh    = Column(Float, default=0.0)
+    forecast_kwh = Column(Float, default=0.0)
     soc_pct = Column(Float, nullable=False)
     soc_kwh = Column(Float, nullable=False)
     charge_kwh = Column(Float, default=0.0)
-    discharge_kwh   = Column(Float, default=0.0)
+    discharge_kwh = Column(Float, default=0.0)
     import_kwh = Column(Float, default=0.0)
     export_kwh = Column(Float, default=0.0)
+    direct_solar_kwh = Column(Float, nullable=False, default=0.0)
     tariff_zone = Column(String(10))
-    rate_uah_kwh    = Column(Float)
+    rate_uah_kwh = Column(Float)
     cost_uah = Column(Float, default=0.0)
     strategy = Column(String(50))
-    temperature_c   = Column(Float)
-    irradiance_wm2  = Column(Float)
+    temperature_c = Column(Float)
+    irradiance_wm2 = Column(Float)
 
     __table_args__ = (
         UniqueConstraint("run_id", "timestamp", name="uq_simres_run_ts"),
-        Index("ix_simres_run_ts",  "run_id", "timestamp"),
-        Index("ix_simres_ts",      "timestamp"),
+        Index("ix_simres_run_ts", "run_id", "timestamp"),
+        Index("ix_simres_ts", "timestamp"),
     )
 
     def __repr__(self) -> str:

@@ -11,3 +11,5 @@ reports/*.xlsx
 logs/*.log
 .pytest_cache/
 .coverage
+frontend/node_modules/
+node_modules/

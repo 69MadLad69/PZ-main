@@ -7,52 +7,75 @@ services:
       POSTGRES_DB: ems_db
       POSTGRES_USER: ems_user
       POSTGRES_PASSWORD: ems_password
-      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=uk_UA.UTF-8"
-      TZ: "Europe/Kyiv"
-      PGTZ: "Europe/Kyiv"
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
-    command: >
-      postgres
-        -c shared_buffers=256MB
-        -c work_mem=16MB
-        -c maintenance_work_mem=64MB
-        -c effective_cache_size=512MB
-        -c max_connections=50
-        -c log_timezone=Europe/Kyiv
-        -c timezone=Europe/Kyiv
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ems_user -d ems_db"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
+    networks:
+      - ems_network
 
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: ems_pgadmin
     restart: unless-stopped
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_EMAIL:    admin@example.com
       PGADMIN_DEFAULT_PASSWORD: admin
-      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
     ports:
       - "5050:80"
-    volumes:
-      - pgadmin_data:/var/lib/pgadmin
     depends_on:
       postgres:
         condition: service_healthy
+    networks:
+      - ems_network
 
+  api:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: ems_api
+    restart: unless-stopped
+    environment:
+      DB_HOST:     postgres
+      DB_PORT:     5432
+      DB_NAME:     ems_db
+      DB_USER:     ems_user
+      DB_PASSWORD: ems_password
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./models_saved:/app/models_saved
+      - ./reports:/app/reports
+    networks:
+      - ems_network
+
+  frontend:
+    profiles: ["full"]
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ems_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+    networks:
+      - ems_network
+ 
+networks:
+  ems_network:
+    driver: bridge
+ 
 volumes:
   postgres_data:
-    driver: local
-  pgadmin_data:
-    driver: local
-
-networks:
-  default:
-    name: ems_network
