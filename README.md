@@ -1,6 +1,6 @@
 # EMS – Energy Management System
 
-## Лабораторна Робота №3: Моделювання системи управління енергопотоками (EMS)
+## Лабораторна Робота №4: Веб-інтерфейс для моніторингу та управління
 
 **Об'єкт:** Поліклініка, Київ | **Площа:** 850 м² | **Режим:** 8:00–20:00
 
@@ -13,35 +13,6 @@
 3. [Структура проєкту](#структура-проєкту)
 4. [Генерація даних](#генерація-даних)
 5. [Аналітика та запити](#аналітика)
-
-## Архітектура
-
-```
-PZ-main/
-│
-│   ЛР1 — Фундамент (не змінюється)
-├── backend/app/database.py
-├── backend/app/models/models.py
-├── backend/app/repositories/
-├── backend/app/services/ 
-├── backend/app/analytics/
-├── backend/scripts/init_db.py
-├── backend/scripts/generate_data.py
-├── backend/scripts/run_analytics.py
-│
-│   ЛР2 — Прогнозування
-├── backend/app/forecasting/
-├── backend/scripts/train_models.py
-├── notebooks/lab2_forecasting.ipynb
-├── models_saved/
-│
-│   ЛР3 — EMS Simulation
-├── backend/app/simulation/
-├── backend/app/models/simulation_models.py
-├── backend/scripts/init_simulation_db.py
-├── backend/scripts/run_simulation.py
-└── notebooks/lab3_ems_simulation.ipynb
-```
 
 ## База даних
 
@@ -158,75 +129,164 @@ python -m backend.scripts.run_simulation --start 2025-07-01 --days 7
 
 ---
 
+## 10. REST API та Frontend (ЛР4)
+
+Є два способи запуску: **локально** (для розробки) або **Docker** (для демонстрації).
+
+---
+
+### Варіант А — Локальний запуск (рекомендовано для розробки)
+
+#### Крок 1 — Встановити додаткові залежності
+
+```bash
+pip install fastapi "uvicorn[standard]" python-multipart openpyxl httpx
+```
+
+#### Крок 2 — Запустити FastAPI backend
+
+```bash
+uvicorn backend.main:app --reload --port 8000
+```
+
+Після старту:
+```
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000
+```
+**Swagger UI:** http://localhost:8000/docs  
+
+#### Крок 3 — Запустити React frontend (окремий термінал)
+
+```bash
+cd frontend
+npm install       # перший раз
+npm run dev
+```
+
+**Веб-інтерфейс:** http://localhost:3000
+
+> Vite автоматично проксіює `/api/*` → `http://localhost:8000`
+
+#### Крок 4 — Перевірка
+
+```bash
+# Перевірити що API працює:
+curl http://localhost:8000/health
+# → {"status": "ok", "version": "4.0.0"}
+
+# Перевірити що новий forecast endpoint є:
+curl http://localhost:8000/api/v1/forecast/test-predictions?n=3
+
+# Перевірити прогноз:
+curl http://localhost:8000/api/v1/forecast/summary
+```
+
+---
+
+### Варіант Б — Docker Compose (усі сервіси разом)
+
+```bash
+# Повний стек: PostgreSQL + pgAdmin + FastAPI + React
+docker-compose --profile full up -d
+```
+
+|     Сервіс      |             URL            |
+|-----------------|----------------------------|
+| React Frontend  | http://localhost:3000      |
+| FastAPI Backend | http://localhost:8000      |
+| Swagger UI      | http://localhost:8000/docs |
+| pgAdmin         | http://localhost:5050      |
+| PostgreSQL      | localhost:5432             |
+
 ## Структура проекту
 
 ```
 PZ-main/
-├── docker-compose.yml # PostgreSQL 16 + pgAdmin
-├── requirements.txt # Залежності ЛР1 + ЛР2
-├── .env.example # Шаблон змінних середовища
-│
-├── reports/ # Генеровані звіти (CSV + PNG)
-│   ├── 01_daily_consumption.csv
-│   ├── 02_monthly_consumption.csv
-│   ├── fig_01_daily.png # ЛР1 charts
-│   ├── fig_lr2_01_yearly.png # ЛР2 EDA charts
-│   └── ...
-│
-├── models_saved/ # Навчені ML-моделі (ЛР2)
+├── docker-compose.yml              # PostgreSQL + pgAdmin + (profile:full) API + Frontend
+├── requirements.txt
+├── .env.example
+├── reports/                        # CSV + PNG звіти (автогенерація ЛР1–3)
+├── models_saved/                   # .joblib моделі (ЛР2) ← потрібні для API
 │   ├── gradient_boosting.joblib
-│   ├── random_forest.joblib
-│   └── metadata.json
-│
+│   └── metadata.json              # feature_columns, best_model
 ├── notebooks/
-│   └── lab2_forecasting.ipynb # ЛР2: повний Data Science pipeline
+│   ├── lab2_forecasting.ipynb
+│   └── lab3_ems_simulation.ipynb
 │
-└── backend/
-    ├── config/
-    │   ├── settings.yaml # ← ВСІ параметри системи
-    │   └── config.py # Pydantic Settings loader
-    │
-    ├── app/
-    │   ├── database.py # Engine, session_scope, get_db
-    │   │
-    │   ├── models/
-    │   │   └── models.py # 9 ORM-моделей + enum-типи
-    │   │
-    │   ├── repositories/
-    │   │   ├── base.py # Generic CRUD BaseRepository
-    │   │   └── repositories.py # Domain repositories
-    │   │
-    │   ├── services/
-    │   │   └── energy_service.py # EnergyService, TariffService
-    │   │
-    │   ├── analytics/
-    │   │   ├── queries.py # SQL views DDL + AnalyticsQueries
-    │   │   └── charts.py # Matplotlib chart generation
-    │   │
-    │   ├── forecasting/ # ЛР2
-    │   │   ├── feature_engineering.py
-    │   │   ├── models.py
-    │   │   ├── forecast_service.py
-    │   │   └── model_loader.py
-    │   │
-    │   └── simulation/ # ЛР3
-    │       ├── components/
-    │       │   ├── solar.py # SolarPlant
-    │       │   ├── battery.py # BatteryStorage
-    │       │   ├── grid.py # GridConnection
-    │       │   └── load_profile.py # LoadProfile
-    │       ├── ems_controller.py # EMSController + TariffOptimizer
-    │       ├── simulation_engine.py
-    │       ├── economics.py # NPV, IRR, Payback, LCOE
-    │       └── simulation_service.py  # API-ready для ЛР4
-    │
-    └── scripts/
-        ├── init_db.py # ЛР1: Ініціалізація БД
-        ├── generate_data.py # ЛР1: Генератор 8760 годин
-        ├── run_analytics.py # ЛР1: Аналітика → CSV + PNG
-        ├── train_models.py # ЛР2: Навчання ML-моделей
-        ├── init_simulation_db.py # ЛР3: Ініціалізація БД для симуляції
-        └── run_simulation.py # ЛР3: Запуск симуляції
+├── backend/
+│   ├── main.py                     # FastAPI application entry (ЛР4)
+│   ├── config/
+│   │   ├── settings.yaml           # ВСІ параметри системи
+│   │   └── config.py               # Pydantic Settings (10 класів конфігурації)
+│   └── app/
+│       ├── database.py             # engine, session_scope, get_db, SessionLocal
+│       ├── models/
+│       │   ├── models.py           # 9 ORM-моделей (ЛР1)
+│       │   └── simulation_models.py# simulation_runs, simulation_results (ЛР3)
+│       ├── repositories/           # Generic CRUD (ЛР1)
+│       ├── services/               # EnergyService, TariffService (ЛР1)
+│       ├── analytics/              # SQL queries + charts (ЛР1)
+│       │   ├── queries.py
+│       │   └── charts.py
+│       ├── forecasting/            # ЛР2
+│       │   ├── feature_engineering.py  # 36 ознак, build_features()
+│       │   ├── models.py               # 6 ML-моделей
+│       │   ├── forecast_service.py     # ForecastService (головний сервіс)
+│       │   └── model_loader.py         # збереження/завантаження .joblib
+│       ├── simulation/             # ЛР3
+│       │   ├── components/
+│       │   │   ├── solar.py        # SolarPlant (NOCT модель)
+│       │   │   ├── battery.py      # BatteryStorage (SOC, ефективність)
+│       │   │   ├── grid.py         # GridConnection (тарифи)
+│       │   │   └── load_profile.py # LoadProfile (ЛР1 + ЛР2)
+│       │   ├── ems_controller.py   # EMSController + TariffOptimizer
+│       │   ├── simulation_engine.py# SimulationEngine (7 діб, PostgreSQL)
+│       │   ├── economics.py        # NPV, IRR, Payback, LCOE
+│       │   └── simulation_service.py # SimulationService (API-ready)
+│       ├── api/                    # ЛР4
+│       │   ├── deps.py             # get_db() FastAPI dependency
+│       │   ├── exceptions.py       # централізований exception handler
+│       │   ├── schemas/__init__.py # всі Pydantic response schemas
+│       │   └── routers/
+│       │       ├── dashboard.py    # GET /dashboard/summary|kpi
+│       │       ├── consumption.py  # GET /consumption/monthly|daily|hourly|tariff|specific
+│       │       ├── weather.py      # GET /weather
+│       │       ├── forecasts.py    # GET /forecast/summary|hourly|metrics|test-predictions
+│       │       ├── ems.py          # GET+POST /ems/*
+│       │       └── reports.py      # POST /reports/generate + GET download|preview
+│       └── scripts/
+│           ├── init_db.py          # ЛР1: ініціалізація схеми БД
+│           ├── generate_data.py    # ЛР1: генерація синтетичних даних
+│           ├── run_analytics.py    # ЛР1: аналітика та графіки
+│           ├── train_models.py     # ЛР2: навчання та збереження моделей
+│           ├── init_simulation_db.py # ЛР3: таблиці симуляції
+│           └── run_simulation.py   # ЛР3: запуск EMS симуляції
+│
+└── frontend/
+    ├── index.html
+    ├── package.json
+    ├── vite.config.ts
+    ├── tailwind.config.js
+    ├── tsconfig.json
+    ├── Dockerfile
+    └── src/
+        ├── main.tsx
+        ├── App.tsx                 # React Router, 7 маршрутів
+        ├── types/index.ts          # TypeScript типи
+        ├── services/api.ts         # axios клієнт до FastAPI
+        ├── components/
+        │   ├── layout/Layout.tsx   # Sidebar + Header
+        │   ├── ui/index.tsx        # KPICard, Card, Spinner, Badge, Empty
+        │   └── charts/Gauges.tsx   # ArcGauge, BarGauge, DashboardGauges
+        └── pages/
+            ├── Dashboard.tsx       # 8 KPI + місячні графіки + гейджі
+            ├── Consumption.tsx     # Рік/Тижні/Дні, baseline, фільтр легенди
+            ├── ForecastPage.tsx    # Прогноз листопада + ДІ + Факт vs Прогноз
+            ├── EmsPage.tsx         # SOC gauge, alerts, економіка (ЛР3)
+            ├── EnergyBalance.tsx   # SVG flow diagram + добовий баланс
+            ├── Analytics.tsx       # Heatmap + scatter temp/load
+            └── Reports.tsx         # ZIP архів (CSV + summary.txt)
 ```
 
 ---
@@ -477,6 +537,38 @@ PZ-main/
 |----------------------|----------------------------------|
 | `simulation_runs`    | Метаінформація про кожний прогін |
 | `simulation_results` | 168 погодинних записів на прогін |
+
+
+## ЛР4
+## API Endpoints
+
+**Base URL:** `http://localhost:8000`  
+**Swagger:** `http://localhost:8000/docs`
+
+|           Endpoint           | Метод|                 Опис             |   ЛР  |
+|------------------------------|------|----------------------------------|-------|
+| `/health`                    | GET  | Перевірка стану API              |   —   |
+| `/dashboard/summary`         | GET  | 8 KPI поточного стану            |  1+3  |
+| `/dashboard/kpi`             | GET  | Місячні KPI за рік               |   1   |
+| `/consumption/monthly`       | GET  | Місячне споживання (`?year=`)    |   1   |
+| `/consumption/daily`         | GET  | Добове (`?start=&end=`)          |   1   |
+| `/consumption/hourly`        | GET  | Погодинне з пагінацією           |   1   |
+| `/consumption/tariff`        | GET  | Розбивка по тарифних зонах       |   1   |
+| `/weather`                   | GET  | Метеодані (`?start=&end=`)       |   1   |
+| `/forecast/summary`          | GET  | Прогноз листопада (GB model)     |   2   |
+| `/forecast/hourly`           | GET  | Погодинний прогноз з ДІ          |   2   |
+| `/forecast/metrics`          | GET  | R², RMSE, MAE, MAPE              |   2   |
+| `/forecast/test-predictions` | GET  | Факт vs прогноз (тестовий набір) |   2   |
+| `/ems/status`                | GET  | Статус останнього прогону        |   3   |
+| `/ems/simulation`            | GET  | 168 погодинних кроків            |   3   |
+| `/ems/metrics`               | GET  | Енергетичні KPI                  |   3   |
+| `/ems/economics`             | GET  | NPV, IRR, Payback, LCOE          |   3   |
+| `/ems/energy-flow`           | GET  | Потоки для Sankey                |   3   |
+| `/ems/run`                   | POST | Запустити симуляцію              |   3   |
+| `/reports/generate`          | POST | Отримати report_id               | 1+2+3 |
+| `/reports/{id}/preview`      | GET  | Текстовий preview (summary.txt)  | 1+2+3 |
+| `/reports/{id}/download`     | GET  | ZIP з CSV + summary.txt          | 1+2+3 |
+
 
 ## Аналітика
 
